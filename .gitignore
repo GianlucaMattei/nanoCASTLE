@@ -1,0 +1,13 @@
+# sample data and results
+*.bam
+*.bai
+*.vcf
+*.vcf.gz
+Results/
+Test/
+# image archives
+*.tar
+*.tar.gz
+# databases (downloaded with download_databases.sh)
+nanocastle_db/
+Databsese/
