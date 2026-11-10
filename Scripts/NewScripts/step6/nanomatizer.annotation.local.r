@@ -4,14 +4,16 @@ library(GenomicFeatures)
 library(IRanges)
 library(EnsDb.Hsapiens.v86)
 library(writexl)
+# reference-dependent gene/regulatory annotation (hg38 | chm13), 1.1.0
+source(file.path(if (exists("P6")) P6 else "/opt/nanomatizer/Nanomatizer/Scripts/NewScripts/step6", "nanocastle_genome.r"))
 
 # this file is needed -- do I need to upgrade it?
 # /opt/nanomatizer/Nanomatizer/Databsese/EnsemblRegulatory/Homo_sapiens.GRCh38.regulatory_features.v112.gff3
 
 
 # Ottieni CDS e info geni (#! tolgo i cazzo di UTR)
-cdsEnsDb <- cdsBy(EnsDb.Hsapiens.v86, by = 'gene')
-geneInfo <- genes(EnsDb.Hsapiens.v86)
+cdsEnsDb <- ens_cds_by_gene()
+geneInfo <- ens_genes()
 
 # Unlist
 cdsUnlisted <- unlist(cdsEnsDb, use.names = FALSE)
@@ -32,7 +34,7 @@ mcols(cdsUnlisted)$gene_biotype <- geneInfo$gene_biotype[m]
 cdsEnsDb <- relist(cdsUnlisted, cdsEnsDb)
 
 #! creating annotations
-genesEnsDb <- GenomicFeatures::genes(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86)
+genesEnsDb <- ens_genes()
 # exonsEnsDb <- GenomicFeatures::exonsBy(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86, by = 'gene')
 exonsEnsDb <- cdsEnsDb
 regulatory <- # path derivato da P6 (definito dal driver che lo source); fallback container
@@ -42,7 +44,7 @@ if (exists("P6")) {
 } else {
   T_ROOT <- "/opt/nanomatizer"
 }
-regulatory <- read.table(file.path(T_ROOT, "Nanomatizer/Databsese/EnsemblRegulatory/Homo_sapiens.GRCh38.regulatory_features.v112.gff3"), header = F, sep = "\t", fill = T)
+regulatory <- read.table(regulatory_gff3(T_ROOT), header = F, sep = "\t", fill = T)
 regulatory.coord <- GenomicRanges::makeGRangesFromDataFrame(data.frame(seqnames = paste0("chr", regulatory[,1]), start = regulatory[,4], end = regulatory[,5]))
 
 
@@ -67,7 +69,7 @@ annotateClair <- function(x, sample.name.output, output.dir){
     toadd <- data.frame(data.frame(unlist(exonsEnsDb)[S4Vectors::subjectHits(hits3)]), EnsID = names(unlist(exonsEnsDb))[S4Vectors::subjectHits(hits3)])
     colnames(toadd) <- paste0("exon.", colnames(toadd))
     sample.genes.exons <- cbind(x[S4Vectors::queryHits(hits3),], toadd)
-    annot <- biomaRt::select(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86, key = "GENEID", keys = sample.genes.exons$exon.EnsID, columns = c("SYMBOL", "GENEID"))
+    annot <- if (length(sample.genes.exons$exon.EnsID)) biomaRt::select(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86, key = "GENEID", keys = sample.genes.exons$exon.EnsID, columns = c("SYMBOL", "GENEID")) else data.frame(SYMBOL = character(0), GENEID = character(0))  # 1.0.1 fix: empty keys -> SQL "IN ()" error
     sample.genes.exons <- merge(sample.genes.exons, annot, by.x = "exon.EnsID", by.y = "GENEID", all.x = TRUE)
     colnames(sample.genes.exons)[1:8] <- c("EnsgID", "Chr", "Pos", "Strand", "Ref", "Alt", "Qual", "Filter")
     sample.genes.exons <- cbind(sample.genes.exons[,c(-1, -4)], sample.genes.exons[,1])
@@ -120,7 +122,7 @@ annotateClair2 <- function(x, sample.name.output, output.dir){
     toadd <- data.frame(data.frame(unlist(exonsEnsDb)[S4Vectors::subjectHits(hits3)]), EnsID = names(unlist(exonsEnsDb))[S4Vectors::subjectHits(hits3)])
     colnames(toadd) <- paste0("exon.", colnames(toadd))
     sample.genes.exons <- cbind(x[S4Vectors::queryHits(hits3),], toadd)
-    annot <- biomaRt::select(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86, key = "GENEID", keys = sample.genes.exons$exon.EnsID, columns = c("SYMBOL", "GENEID"))
+    annot <- if (length(sample.genes.exons$exon.EnsID)) biomaRt::select(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86, key = "GENEID", keys = sample.genes.exons$exon.EnsID, columns = c("SYMBOL", "GENEID")) else data.frame(SYMBOL = character(0), GENEID = character(0))  # 1.0.1 fix: empty keys -> SQL "IN ()" error
     sample.genes.exons <- merge(sample.genes.exons, annot, by.x = "exon.EnsID", by.y = "GENEID", all.x = TRUE)
     colnames(sample.genes.exons)[1:8] <- c("EnsgID", "Chr", "Pos", "Strand", "Ref", "Alt", "Qual", "Filter")
     sample.genes.exons <- cbind(sample.genes.exons[,c(-1, -4)], sample.genes.exons[,1])
@@ -175,6 +177,7 @@ annotateCuteSV <- function(sample.file, sample.name, output.dir, sample.name.out
     coords.df <- rbind(del.df, dup.df, ins.df, inv.df)
     colnames(coords.df)[1] <- "seqnames"
 
+    coords.df$reads <- as.numeric(coords.df$reads)  # 1.0.1 fix: was compared as text ("10" < "7")
     coords.df <- subset(coords.df, coords.df$reads >= 7)
 
     #! Genes and Exons
@@ -185,7 +188,7 @@ annotateCuteSV <- function(sample.file, sample.name, output.dir, sample.name.out
 
     hits3 <- IRanges::findOverlaps(GenomicRanges::makeGRangesFromDataFrame(coords.df), unlist(exonsEnsDb))
     sample.genes.exons <- cbind(coords.df[S4Vectors::queryHits(hits3),], data.frame(unlist(exonsEnsDb)[S4Vectors::subjectHits(hits3)]), EnsID = names(unlist(exonsEnsDb))[S4Vectors::subjectHits(hits3)])
-    annot <- biomaRt::select(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86, key = "GENEID", keys = sample.genes.exons$EnsID, columns = c("SYMBOL", "GENEID"))
+    annot <- if (length(sample.genes.exons$EnsID)) biomaRt::select(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86, key = "GENEID", keys = sample.genes.exons$EnsID, columns = c("SYMBOL", "GENEID")) else data.frame(SYMBOL = character(0), GENEID = character(0))  # 1.0.1 fix: empty keys -> SQL "IN ()" error
     sample.genes.exons <- merge(sample.genes.exons, annot, by.x = "EnsID", by.y = "GENEID", all.x = TRUE)
     sample.genes.exons <- subset(sample.genes.exons, !duplicated(sample.genes.exons[c(1:5, 14)]))
 
@@ -235,7 +238,7 @@ annotateGasoline <- function(sample.file, sample.name, output.dir, sample.name.o
 
     hits3 <- IRanges::findOverlaps(GenomicRanges::makeGRangesFromDataFrame(sample.subset[c(1,4,5)]), unlist(exonsEnsDb))
     sample.genes.exons <- cbind(sample.subset[S4Vectors::queryHits(hits3),], data.frame(unlist(exonsEnsDb)[S4Vectors::subjectHits(hits3)]), EnsID = names(unlist(exonsEnsDb))[S4Vectors::subjectHits(hits3)])
-    annot <- biomaRt::select(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86, key = "GENEID", keys = sample.genes.exons$EnsID, columns = c("SYMBOL", "GENEID"))
+    annot <- if (length(sample.genes.exons$EnsID)) biomaRt::select(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86, key = "GENEID", keys = sample.genes.exons$EnsID, columns = c("SYMBOL", "GENEID")) else data.frame(SYMBOL = character(0), GENEID = character(0))  # 1.0.1 fix: empty keys -> SQL "IN ()" error
     sample.genes.exons <- merge(sample.genes.exons, annot, by.x = "EnsID", by.y = "GENEID", all.x = TRUE)
     sample.genes.exons <- subset(sample.genes.exons, !duplicated(sample.genes.exons[,c(-37:-33)])) # tolgo le colonne che non mi fanno riconoscere le righe duplicate (seqnames start ect fino a exon_id)
 
@@ -285,7 +288,7 @@ annotateGasoline2 <- function(sample.file, sample.name, output.dir, sample.name.
 
     hits3 <- IRanges::findOverlaps(GenomicRanges::makeGRangesFromDataFrame(sample.subset[c(1,2,3)]), unlist(exonsEnsDb))
     sample.genes.exons <- cbind(sample.subset[S4Vectors::queryHits(hits3),], data.frame(unlist(exonsEnsDb)[S4Vectors::subjectHits(hits3)]), EnsID = names(unlist(exonsEnsDb))[S4Vectors::subjectHits(hits3)])
-    annot <- biomaRt::select(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86, key = "GENEID", keys = sample.genes.exons$EnsID, columns = c("SYMBOL", "GENEID"))
+    annot <- if (length(sample.genes.exons$EnsID)) biomaRt::select(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86, key = "GENEID", keys = sample.genes.exons$EnsID, columns = c("SYMBOL", "GENEID")) else data.frame(SYMBOL = character(0), GENEID = character(0))  # 1.0.1 fix: empty keys -> SQL "IN ()" error
     sample.genes.exons <- merge(sample.genes.exons, annot, by.x = "EnsID", by.y = "GENEID", all.x = TRUE)
     sample.genes.exons <- sample.genes.exons[,c(-32:-28)]
     sample.genes.exons <- subset(sample.genes.exons, !duplicated(sample.genes.exons)) # tolgo le colonne che non mi fanno riconoscere le righe duplicate (seqnames start ect fino a exon_id)
@@ -357,8 +360,8 @@ annotateInterTrans <- function(sample.file, sample.name, output.dir, sample.name
     }
 
     hits.dist2 <- distanceToNearest(GenomicRanges::makeGRangesFromDataFrame(tabl.subset.coord2), genesEnsDb, ignore.strand = TRUE)
-    if(length(hits2.genes) > 0){
-        for(i in 1:length(hits2.genes)){
+    if(length(hits.dist2) > 0){  # 1.0.1 fix: loop over hits.dist2, not hits2.genes (out-of-bounds)
+        for(i in 1:length(hits.dist2)){
             tabl.subset[S4Vectors::queryHits(hits.dist2[i]), "nearest.gene2"] <- genesEnsDb[S4Vectors::subjectHits(hits.dist2[i])]$symbol
             tabl.subset[S4Vectors::queryHits(hits.dist2[i]), "nearest.gene2.distance"] <- ifelse(is.null(data.frame(hits.dist2[i])[,'distance']), 0, data.frame(hits.dist2[i])[,'distance'])
 
@@ -455,8 +458,8 @@ annotateInterTrans2 <- function(sample.file, sample.name, output.dir, sample.nam
     }
 
     hits.dist2 <- distanceToNearest(GenomicRanges::makeGRangesFromDataFrame(tabl.subset.coord2), genesEnsDb, ignore.strand = TRUE)
-    if(length(hits2.genes) > 0){
-        for(i in 1:length(hits2.genes)){
+    if(length(hits.dist2) > 0){  # 1.0.1 fix: loop over hits.dist2, not hits2.genes (out-of-bounds)
+        for(i in 1:length(hits.dist2)){
             tabl.subset[S4Vectors::queryHits(hits.dist2[i]), "nearest.gene2"] <- genesEnsDb[S4Vectors::subjectHits(hits.dist2[i])]$symbol
             tabl.subset[S4Vectors::queryHits(hits.dist2[i]), "nearest.gene2.distance"] <- ifelse(is.null(data.frame(hits.dist2[i])[,'distance']), 0, data.frame(hits.dist2[i])[,'distance'])
 
@@ -537,7 +540,7 @@ annotateSniffles <- function(sample.file, sample.name, output.dir, sample.name.o
 
     hits3 <- IRanges::findOverlaps(GenomicRanges::makeGRangesFromDataFrame(tabl.subset), unlist(exonsEnsDb))
     sample.genes.exons <- cbind(tabl.subset[S4Vectors::queryHits(hits3),], data.frame(unlist(exonsEnsDb)[S4Vectors::subjectHits(hits3)]), EnsID = names(unlist(exonsEnsDb))[S4Vectors::subjectHits(hits3)])
-    annot <- biomaRt::select(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86, key = "GENEID", keys = sample.genes.exons$EnsID, columns = c("SYMBOL", "GENEID"))
+    annot <- if (length(sample.genes.exons$EnsID)) biomaRt::select(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86, key = "GENEID", keys = sample.genes.exons$EnsID, columns = c("SYMBOL", "GENEID")) else data.frame(SYMBOL = character(0), GENEID = character(0))  # 1.0.1 fix: empty keys -> SQL "IN ()" error
     sample.genes.exons <- merge(sample.genes.exons, annot, by.x = "EnsID", by.y = "GENEID", all.x = TRUE)
     sample.genes.exons <- subset(sample.genes.exons, !duplicated(sample.genes.exons[,c(11:15) * -1]))
 

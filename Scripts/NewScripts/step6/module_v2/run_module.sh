@@ -53,7 +53,12 @@ TUMOR=${5:-}
 SAMPLE=${SAMPLE:-}
 LOG=$OUTDIR/step6_v2.log
 STATUS=$T/Nanomatizer/Results/STATUS.txt
-GFF3=$T/Nanomatizer/Databsese/EnsemblRegulatory/Homo_sapiens.GRCh38.regulatory_features.v112.gff3
+# 1.1.0: databases folder by reference. hg38 -> image folder; chm13 -> folder prepared by
+# run_pipeline_sequential.sh (lifted coordinate databases + links to the others)
+export NANOCASTLE_ASSEMBLY=${NANOCASTLE_ASSEMBLY:-hg38}
+DBDIR=${NANOCASTLE_DBDIR:-$T/Nanomatizer/Databsese}
+export NANOCASTLE_DBDIR=$DBDIR
+GFF3=$DBDIR/EnsemblRegulatory/Homo_sapiens.GRCh38.regulatory_features.v112.gff3
 ST(){ echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >>$STATUS; }
 
 mkdir -p "$OUTDIR"
@@ -92,12 +97,12 @@ fi
 
 # --- R v2 DRIVER EXECUTION ---------------------------------------------------
 mkdir -p "$T/Nanomatizer/Results/logs"   # STATUS log (fixed path)
-ST "STEP6-v2 START mode=$MODE tools=$TOOLS depmap=$DEPMAP tumor=${TUMOR:-skip} outdir=$OUTDIR"
+ST "STEP6-v2 START assembly=$NANOCASTLE_ASSEMBLY dbdir=$DBDIR mode=$MODE tools=$TOOLS depmap=$DEPMAP tumor=${TUMOR:-skip} outdir=$OUTDIR"
 START=$(date +%s)
 HOME=$T/fakehome XDG_CACHE_HOME=$T/cache MAMBA_ROOT_PREFIX=$T/mamba-root \
 PATH="$T/fakehome/bin:$T/mamba-root/envs/nanomatizer-annot/bin:$PATH" \
 "$T/mamba-root/envs/nanomatizer-annot/bin/Rscript" --vanilla "$MV2/nanomatizer_annotation_v2.r" \
-  "sample=$SAMPLE" "outdir=$OUTDIR" "dbdir=$T/Nanomatizer/Databsese" \
+  "sample=$SAMPLE" "outdir=$OUTDIR" "dbdir=$DBDIR" \
   "mode=$MODE" "tools=$TOOLS" "depmap=$DEPMAP" "tumor=$TUMOR" >>"$LOG" 2>&1
 RC=$?
 ELAPSED=$(( ( $(date +%s) - START ) / 60 ))

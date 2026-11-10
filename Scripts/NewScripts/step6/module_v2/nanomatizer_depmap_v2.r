@@ -293,24 +293,28 @@ collapse.genes.v2 <- function(x, overlap.names, depmap.cols) {
 
     if (nrow(data.frame(gasoline.out)) > 0) {
         colnames.gasoline.out <- c("tag", "seqnames", "start", "end", "Size", "SV.Type", "Clustered.Signatures", "Total.Reads", "symbol", def.col)
+        for (cc in setdiff(colnames.gasoline.out, names(gasoline.out))) gasoline.out[, (cc) := NA]  # 1.0.1 fix: SVs without hits in some DB lack its columns
         gasoline.out.formatted <- gasoline.out[, ..colnames.gasoline.out]
         colnames(gasoline.out.formatted) <- c("tag", "seqnames", "start", "end", "length", "sv", "reads", "Total.Reads", "symbol", def.col)
     } else { gasoline.out.formatted <- NULL }
 
     if (nrow(data.frame(cutesv.out)) > 0) {
         colnames.cutesv.out <- c("tag", "seqnames", "start", "end", "length", "sv", "reads", "symbol", def.col)
+        for (cc in setdiff(colnames.cutesv.out, names(cutesv.out))) cutesv.out[, (cc) := NA]  # 1.0.1 fix: SVs without hits in some DB lack its columns
         cutesv.out.formatted <- cutesv.out[, ..colnames.cutesv.out]
         colnames(cutesv.out.formatted) <- c("tag", "seqnames", "start", "end", "length", "sv", "reads", "symbol", def.col)
     } else { cutesv.out.formatted <- NULL }
 
     if (nrow(data.frame(sniffles2.out)) > 0) {
         colnames.sniffles2.out <- c("tag", "seqnames", "start", "end", "length", "svtype", "SUPPORT", "COVERAGE", "VAF", "hap", "symbol", def.col)
+        for (cc in setdiff(colnames.sniffles2.out, names(sniffles2.out))) sniffles2.out[, (cc) := NA]  # 1.0.1 fix: SVs without hits in some DB lack its columns
         sniffles2.out.formatted <- sniffles2.out[, ..colnames.sniffles2.out]
         colnames(sniffles2.out.formatted) <- c("tag", "seqnames", "start", "end", "length", "sv", "reads", "coverage", "VAF", "hap", "symbol", def.col)
     } else { sniffles2.out.formatted <- NULL }
 
     if (nrow(data.frame(ng100k.out)) > 0) {
         colnames.ng100k.out <- c("seqnames", "start", "end", "length", "CNV.Type", "Shift", "Copies", "symbol", def.col)
+        for (cc in setdiff(colnames.ng100k.out, names(ng100k.out))) ng100k.out[, (cc) := NA]  # 1.0.1 fix: CNVs without hits in some DB lack its columns
         ng100k.out.formatted <- ng100k.out[, ..colnames.ng100k.out]
         colnames(ng100k.out.formatted) <- c("seqnames", "start", "end", "length", "CNV.Type", "Shift", "Copies", "symbol", def.col)
     } else { ng100k.out.formatted <- NULL }

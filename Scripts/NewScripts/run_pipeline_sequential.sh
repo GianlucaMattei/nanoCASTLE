@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# SEQUENTIAL SV-CALLER PIPELINE (hg38/GRCh38 — GRCh38/hg38 ONLY) — one script,
+# SEQUENTIAL SV-CALLER PIPELINE (GRCh38 no-alt or T2T-CHM13v2.0) — one script,
 # one tool at a time.
 #
 # This is a GENERIC pipeline: the sample name is provided by the user.
@@ -8,8 +8,18 @@
 #   BAM      BAM path (default $T/Nanomatizer/Test/BAM/BAM.srt.bam). The .bai
 #            index is NOT an option: the pipeline checks $BAM.bai and, if
 #            missing, builds it with samtools (idempotent).
-#   REF      reference FASTA GRCh38 path (default
+#   REF      reference FASTA path (default
 #            $T/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fasta).
+#            Supported: GRCh38 (chr1..chr22,chrX,chrY with GRCh38 lengths) and
+#            T2T-CHM13v2.0 (chm13v2.0*.fa). The reference is recognised from the
+#            lengths of the 24 primary chromosomes (genome fingerprint) and the
+#            tools/databases are chosen accordingly (1.1.0):
+#              GRCh38 -> NanoGLADIATOR_1.0 --assembly hg38, GASOLINE_2.0 -R hg38,
+#                        annotation databases GRCh38 (Nanomatizer/Databsese)
+#              CHM13  -> NanoGLADIATOR_1.0_T2T --assembly chm13, GASOLINE_2.0_T2T
+#                        -R chm13, annotation databases lifted to CHM13
+#                        (Nanomatizer/Databsese_chm13 + user databases lifted once
+#                        into userdb/chm13, see build_chm13_dbs.r)
 #            Same mechanism for the index: $REF.fai checked/built.
 #
 # Modes (-m):
@@ -226,10 +236,42 @@ ensure_ref_index() {
 }
 if [ "$RUN_SET" != "none" ]; then
   [ -f "$BAM" ] || die "BAM missing: $BAM"
-  [ -f "$REF" ] || die "reference missing: $REF (it must be GRCh38/hg38 — the pipeline is GRCh38-only)"
+  [ -f "$REF" ] || die "reference missing: $REF"
   ensure_bam_index "$BAM"
   ensure_ref_index "$REF"
 fi
+
+# ---------- reference assembly (1.1.0) -----------------------------------------
+# Genome fingerprint = md5 of the "name length" lines of the 24 primary
+# chromosomes (chr1..chr22, chrX, chrY), sorted; from $REF.fai, else from the
+# @SQ lines of the BAM, else (annotate mode) from $OUT/.assembly written by the
+# callers run. Any other genome: STOP (the annotation databases would not match).
+STANDARD_FP="1475bd4e081404f7aee6a7bc6e314c3a"   # GRCh38 (no-alt analysis set and any GRCh38 with chr prefix)
+CHM13_FP="28e8066783123db7189fd165606dfc85"      # T2T-CHM13v2.0
+genome_fp() {
+  awk '{print $1, $2}' "$1" | grep -E '^(chr([1-9]|1[0-9]|2[0-2])|chrX|chrY) [0-9]+$' | LC_ALL=C sort | md5sum | awk '{print $1}'
+}
+bam_fp() {
+  $MM run -p "$MAMBA_ROOT_PREFIX/envs/nanogladiator" samtools view -H "$1" 2>/dev/null \
+    | awk -F'\t' '$1=="@SQ"{n="";l="";for(i=2;i<=NF;i++){if($i~/^SN:/)n=substr($i,4);if($i~/^LN:/)l=substr($i,4)};print n, l}' \
+    | grep -E '^(chr([1-9]|1[0-9]|2[0-2])|chrX|chrY) [0-9]+$' | LC_ALL=C sort | md5sum | awk '{print $1}'
+}
+FP=""
+if [ -f "${REF}.fai" ] && [ "$RUN_SET" != "none" ]; then FP=$(genome_fp "${REF}.fai")
+elif [ -f "$BAM" ]; then FP=$(bam_fp "$BAM"); fi
+case "$FP" in
+  "$STANDARD_FP") ASSEMBLY=hg38;;
+  "$CHM13_FP")    ASSEMBLY=chm13;;
+  "")             if [ -s "$OUT/.assembly" ]; then ASSEMBLY=$(cat "$OUT/.assembly")
+                  else ASSEMBLY=hg38; step "WARNING: reference not recognisable (no $REF.fai, no BAM, no $OUT/.assembly): assuming GRCh38 (results of nanoCASTLE 1.0.0)"; fi;;
+  *)              die "reference not supported (fingerprint $FP): nanoCASTLE runs on GRCh38 (no-alt) or T2T-CHM13v2.0, with chr1..chr22, chrX, chrY";;
+esac
+if [ -s "$OUT/.assembly" ] && [ "$(cat "$OUT/.assembly")" != "$ASSEMBLY" ]; then
+  die "results in $OUT were produced on $(cat "$OUT/.assembly"), this run is on $ASSEMBLY: use a new output folder"
+fi
+echo "$ASSEMBLY" > "$OUT/.assembly"
+export NANOCASTLE_ASSEMBLY=$ASSEMBLY
+step "reference assembly: $ASSEMBLY (fingerprint $FP)"
 # Cores to use: -p option (env NPROC) or all available.
 if [ -n "$NPROC_OPT" ]; then
   case "$NPROC_OPT" in
@@ -253,9 +295,12 @@ step "PIPELINE START (core=$NPROC) — sample=$SAMPLE mode=$MODE tools=$TOOLSEL 
 #     tool via SYMLINK: a runtime artifact recreated on every run, no tool
 #     file is written (BRIEF 1).
 # =============================================================================
-NGD=$T/NanoGLADIATOR_1.0
-TARGET_STD=hg38w1000000
-TARGET=hg38w1000000
+if [ "$ASSEMBLY" = "chm13" ]; then
+  NGD=$T/NanoGLADIATOR_1.0_T2T; NG_ASM=chm13; TARGET_STD=chm13w1000000
+else
+  NGD=$T/NanoGLADIATOR_1.0;     NG_ASM=hg38;  TARGET_STD=hg38w1000000
+fi
+TARGET=$TARGET_STD
 WDIR=R6_W1Mb
 NGL_LABEL="${SAMPLE}w1mb_germinal"
 SRCW=$OUT/NanoGLADIATOR/$SAMPLE/W1Mb            # RC/RCNorm prepare (read-only)
@@ -267,10 +312,6 @@ NGTGTMARKER=$NGOUT/.ng_target
 # verified value for the standard genome used by the pipeline (GRCh38 no-alt,
 # 24 primaries with the chr prefix): identical computed from the .fai and from
 # the @SQ of the BAM.
-STANDARD_FP="1475bd4e081404f7aee6a7bc6e314c3a"
-genome_fp() {
-  awk '{print $1, $2}' "$1" | grep -E '^(chr([1-9]|1[0-9]|2[0-2])|chrX|chrY) [0-9]+$' | LC_ALL=C sort | md5sum | awk '{print $1}'
-}
 
 # NanoGLADIATOR 1 Mb windows target:
 #   - standard genome (fingerprint == STANDARD_FP) -> bundled target
@@ -282,10 +323,8 @@ genome_fp() {
 # The target is a function ONLY of the genome (the windows depend on the .fai,
 # the GC on the FASTA, the mappability is constant 1.0 in the builder), so the
 # cache is reused on every run: the symlink is the only recreated element.
-FP=""
 if [ -f "${REF}.fai" ]; then
-  FP=$(genome_fp "${REF}.fai")
-  if [ "$FP" = "$STANDARD_FP" ]; then
+  if [ "$FP" = "$STANDARD_FP" ] || [ "$FP" = "$CHM13_FP" ]; then
     TARGET=$TARGET_STD
   else
     TARGET="w1000000_${FP:0:8}"
@@ -298,11 +337,11 @@ if [ -f "${REF}.fai" ]; then
     rc=$?
     [ $rc -eq 0 ] || die "NanoGLADIATOR target build rc=$rc (see pipeline_ng_target_build.log)"
     [ -s "$BUILT/TargetWindow.bed" ] || die "target build: TargetWindow.bed missing in $BUILT"
-    [ -d "$NGD/data/targets/hg38" ] || die "$NGD/data/targets/hg38 missing (tool incomplete?)"
+    [ -d "$NGD/data/targets/$NG_ASM" ] || die "$NGD/data/targets/$NG_ASM missing (tool incomplete?)"
     # symlink injection: runtime artifact, recreated on every run
-    ln -sfn "$BUILT" "$NGD/data/targets/hg38/$TARGET"
-    [ -d "$NGD/data/targets/hg38/$TARGET" ] || die "target symlink not working: $NGD/data/targets/hg38/$TARGET"
-    step "[1/5] NanoGLADIATOR: non-standard target ready ($TARGET, $(wc -l < "$BUILT/TargetWindow.bed") windows) — symlink $NGD/data/targets/hg38/$TARGET"
+    ln -sfn "$BUILT" "$NGD/data/targets/$NG_ASM/$TARGET"
+    [ -d "$NGD/data/targets/$NG_ASM/$TARGET" ] || die "target symlink not working: $NGD/data/targets/$NG_ASM/$TARGET"
+    step "[1/5] NanoGLADIATOR: non-standard target ready ($TARGET, $(wc -l < "$BUILT/TargetWindow.bed") windows) — symlink $NGD/data/targets/$NG_ASM/$TARGET"
   fi
 fi
 
@@ -346,8 +385,8 @@ else
         die "NanoGLADIATOR in INCONSISTENT state: RC in $SRCW/RC = $RC_N/24 (I remove nothing, a decision is required)"
     fi
     if [ "$RC_N" -lt 24 ] || [ ! -f "$SRCW/RCNorm/${NGL_LABEL}.NRC.RData" ]; then
-        [ -f "$NGD/data/centromere/CentromerePosition_hg38.txt" ] \
-            || die "NanoGLADIATOR: hg38 centromere file missing in $NGD/data/centromere/CentromerePosition_hg38.txt"
+        [ -f "$NGD/data/centromere/CentromerePosition_${NG_ASM}.txt" ] \
+            || die "NanoGLADIATOR: $NG_ASM centromere file missing in $NGD/data/centromere/CentromerePosition_${NG_ASM}.txt"
         mkdir -p "$SRCW"
         step "[1/5] NanoGLADIATOR PREPARE RUNNING (new sample, $TARGET, $NGT processors) — ~35-40 min"
         PREP="$SRCW/${SAMPLE}.w1mb.experimental.file.txt"
@@ -355,7 +394,7 @@ else
         s=$(date +%s)
         ( cd "$NGD" && $MM run -p "$MAMBA_ROOT_PREFIX/envs/nanogladiator" \
             perl NanoGLADIATORPrepare.pl "$PREP" --processors $NGT \
-            --target "$TARGET" --assembly hg38 ) \
+            --target "$TARGET" --assembly $NG_ASM ) \
             > "$LOGDIR/pipeline_nanogladiator_prepare.log" 2>&1
         rc=$?
         e=$(($(date +%s) - s))
@@ -383,7 +422,7 @@ else
     ( cd "$NGD" && HOME="$T/fakehome" XDG_CACHE_HOME="$T/cache" MAMBA_ROOT_PREFIX="$MAMBA_ROOT_PREFIX" \
         PATH="$T/fakehome/bin:$MAMBA_ROOT_PREFIX/envs/nanogladiator/bin:$PATH" \
         perl NanoGLADIATORAnalysis.pl "$ANA" --processors $NGT \
-        --target "$TARGET" --assembly hg38 --output "$NGOUT" --mode nocontrol ) \
+        --target "$TARGET" --assembly $NG_ASM --output "$NGOUT" --mode nocontrol ) \
         > "$LOGDIR/pipeline_nanogladiator.log" 2>&1
     rc=$?
     e=$(($(date +%s) - s))
@@ -486,7 +525,7 @@ fi
 # user's job), EXCEPT when the parse itself completed (ParsedSplit present):
 # that is a resume point, and only the GermlineDetector is re-run.
 # =============================================================================
-GAS=$T/GASOLINE_2.0
+if [ "$ASSEMBLY" = "chm13" ]; then GAS=$T/GASOLINE_2.0_T2T; GAS_ASM=chm13; else GAS=$T/GASOLINE_2.0; GAS_ASM=hg38; fi
 GPARSE=$OUT/Gasoline/Parse/$SAMPLE
 GGERM=$OUT/Gasoline/Germline/$SAMPLE
 GREZ=$GPARSE/${SAMPLE}.Results.tsv
@@ -550,7 +589,7 @@ if ! gasoline_valid "$GPARSE" 2>/dev/null; then
         step "[4/5] Gasoline: Parse SKIPPED (signatures already extracted)"
     else
         step "[4/5] Gasoline Parse RUNNING"
-        ( cd "$GAS" && PATH="$GPATH" perl GASOLINEParse.pl -B "$BAM" -L "$SAMPLE" -O "$GPARSE" -R hg38 ) \
+        ( cd "$GAS" && PATH="$GPATH" perl GASOLINEParse.pl -B "$BAM" -L "$SAMPLE" -O "$GPARSE" -R $GAS_ASM ) \
             > "$LOGDIR/pipeline_gasoline_parse.log" 2>&1
         rc=$?
         [ $rc -eq 0 ] && [ -s "$PARSPL" ] || die "Gasoline Parse rc=$rc, ParsedSplit $([ -s "$PARSPL" ] && echo present || echo MISSING) (see pipeline_gasoline_parse.log)"
@@ -597,6 +636,33 @@ case "$MODE" in
   annotate) STEP6_MODE=all; STEP6_TOOLS=$TOOLSEL;;
 esac
 
+# ---- annotation databases for T2T-CHM13 (1.1.0) ----
+# Shipped coordinate databases: lifted at image build time (Nanomatizer/Databsese_chm13).
+# User databases (DGV, DECIPHER, not redistributable): lifted ONCE, the first time a CHM13
+# sample is annotated, into userdb/chm13 (or $OUT/.userdb_chm13 if userdb is read-only).
+# $OUT/.db_chm13 = view used by step 6: links to the GRCh38 folder for the databases without
+# coordinates, overridden by the CHM13 versions (runtime symlinks, recreated on every run).
+if [ "$ASSEMBLY" = "chm13" ]; then
+  CH=$T/Nanomatizer/Databsese_chm13
+  [ -s "$CH/EnsDb.Hsapiens.v86_chm13.rds" ] || die "CHM13 databases missing in $CH (image incomplete?)"
+  UCH=$T/userdb/chm13
+  { mkdir -p "$UCH" && [ -w "$UCH" ]; } 2>/dev/null || UCH=$OUT/.userdb_chm13
+  if [ ! -s "$UCH/DGV.GS.hg38.gff3" ] || [ ! -s "$UCH/population_cnv_grch38.txt" ]; then
+    mkdir -p "$UCH"
+    step "[5/5] CHM13: one-off liftover of the user databases (DGV, DECIPHER) -> $UCH"
+    ONLY=DGV.GS.hg38.gff3,population_cnv_grch38.txt \
+      "$MAMBA_ROOT_PREFIX/envs/nanomatizer-annot/bin/Rscript" --vanilla "$T/Nanomatizer/Scripts/NewScripts/build_chm13_dbs.r" \
+      "$T/Nanomatizer/Databsese" "$UCH" "$T/reference/grch38-chm13v2.chain" "$T/bin/liftOver" \
+      > "$LOGDIR/pipeline_chm13_userdb_liftover.log" 2>&1 \
+      || die "CHM13 liftover of the user databases failed (see pipeline_chm13_userdb_liftover.log)"
+  fi
+  VIEW=$OUT/.db_chm13; mkdir -p "$VIEW"
+  for f in "$T/Nanomatizer/Databsese"/* "$CH"/* "$UCH/DGV.GS.hg38.gff3" "$UCH/population_cnv_grch38.txt"; do
+    ln -sfn "$f" "$VIEW/$(basename "$f")"
+  done
+  export NANOCASTLE_DBDIR=$VIEW
+  step "[5/5] CHM13 annotation databases: $VIEW (lifted: $CH, $UCH)"
+fi
 step "[5/5] Annotation+aggregation (mode=$STEP6_MODE, tools=$STEP6_TOOLS, tumor=${TUMOR:-skip}, depmap=$DEPMAP, outdir=$OUT)"
 bash "$MV2/run_module.sh" "$STEP6_MODE" "$OUT" "$STEP6_TOOLS" "$DEPMAP" "$TUMOR" >> "$PLLOG" 2>&1
 rc=$?

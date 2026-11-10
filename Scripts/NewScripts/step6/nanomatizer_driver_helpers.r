@@ -1,6 +1,6 @@
 # ! ------------------FIX INS (COME HO FATTO PRIMA VEDO LE INS CHE POSSONO AVERE UN EFFETTO SULLO SPLICEING, MA COSI AD OCCHIO... INVECE COSI VEDO SOLO LE INS CHE RICADONO SU ESONI SENZA INVENTRARMI NULLA)
 
-exonsEnsDb <- GenomicFeatures::exonsBy(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86, by = 'gene')
+exonsEnsDb <- ens_exons_by_gene()   # hg38: EnsDb v86; chm13: lifted (nanocastle_genome.r)
 
 remove.ins.in.introns <- function(input, sv.tag, sv = "INS", chr = "seqnames"){
     input.ins <- input[get(sv.tag) == sv]
