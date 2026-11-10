@@ -30,7 +30,7 @@
 # It works on the host (needs curl, gzip, md5sum) or inside the image:
 #   docker run --rm --user $(id -u):$(id -g) \
 #     -v ~/nanocastle_db:/opt/nanomatizer/userdb \
-#     gmatteigmattei/nanocastle:1.1.0 bash Nanomatizer/download_databases.sh
+#     ghcr.io/gianlucamattei/nanocastle:1.1.0 bash Nanomatizer/download_databases.sh
 #
 # DepMap release: the script asks the DepMap portal for the file list and takes
 # the most recent "DepMap Public" release. The portal may answer with a human

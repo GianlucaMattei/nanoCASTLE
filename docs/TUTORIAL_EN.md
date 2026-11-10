@@ -55,7 +55,7 @@ choice (`~/nanocastle_db` in the examples), and mount that folder at
 mkdir -p ~/nanocastle_db
 docker run --rm --user $(id -u):$(id -g) \
   -v ~/nanocastle_db:/opt/nanomatizer/userdb \
-  gmatteigmattei/nanocastle:1.1.0 bash Nanomatizer/download_databases.sh
+  ghcr.io/gianlucamattei/nanocastle:1.1.0 bash Nanomatizer/download_databases.sh
 ```
 
 Add `--no-depmap` to skip the two DepMap CSVs (~430 MB) if you will not
@@ -170,7 +170,7 @@ docker run -it --rm --user $(id -u):$(id -g) \
   -v ~/data/GCA_000001405.15_GRCh38_no_alt_analysis_set.fasta:/opt/nanomatizer/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fasta \
   -v ~/nanocastle_results:/opt/nanomatizer/Nanomatizer/Results \
   -v ~/nanocastle_db:/opt/nanomatizer/userdb \
-  gmatteigmattei/nanocastle:1.1.0 \
+  ghcr.io/gianlucamattei/nanocastle:1.1.0 \
   bash Nanomatizer/Scripts/NewScripts/run_pipeline_sequential.sh
 ```
 
@@ -208,7 +208,7 @@ annotates/aggregates just those. Example: only Sniffles 2 + NanoGLADIATOR:
 docker run -it --rm --user $(id -u):$(id -g) \
   -e SAMPLE=MySample \
   ... (same mounts as case 1) ... \
-  gmatteigmattei/nanocastle:1.1.0 \
+  ghcr.io/gianlucamattei/nanocastle:1.1.0 \
   bash Nanomatizer/Scripts/NewScripts/run_pipeline_sequential.sh -m full -t sniffles,gladiator
 ```
 
@@ -228,7 +228,7 @@ docker run -it --rm --user $(id -u):$(id -g) \
   -v ~/data/GCA_000001405.15_GRCh38_no_alt_analysis_set.fasta:/opt/nanomatizer/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fasta \
   -v ~/nanocastle_results:/opt/nanomatizer/Nanomatizer/Results \
   -v ~/nanocastle_db:/opt/nanomatizer/userdb \
-  gmatteigmattei/nanocastle:1.1.0 \
+  ghcr.io/gianlucamattei/nanocastle:1.1.0 \
   bash Nanomatizer/Scripts/NewScripts/run_pipeline_sequential.sh -m callers
 ```
 
@@ -241,7 +241,7 @@ Like case 3, but only the callers chosen with `-t`. Example: only cuteSV
 docker run -it --rm --user $(id -u):$(id -g) \
   -e SAMPLE=MySample \
   ... (same mounts as case 3) ... \
-  gmatteigmattei/nanocastle:1.1.0 \
+  ghcr.io/gianlucamattei/nanocastle:1.1.0 \
   bash Nanomatizer/Scripts/NewScripts/run_pipeline_sequential.sh -m callers -t cutesv,gasoline
 ```
 
@@ -259,7 +259,7 @@ docker run -it --rm --user $(id -u):$(id -g) \
   -e SAMPLE=MySample \
   -v ~/nanocastle_results:/opt/nanomatizer/Nanomatizer/Results \
   -v ~/nanocastle_db:/opt/nanomatizer/userdb \
-  gmatteigmattei/nanocastle:1.1.0 \
+  ghcr.io/gianlucamattei/nanocastle:1.1.0 \
   bash Nanomatizer/Scripts/NewScripts/run_pipeline_sequential.sh -m annotate
 ```
 
@@ -276,7 +276,7 @@ docker run -it --rm --user $(id -u):$(id -g) \
   -e SAMPLE=MySample \
   -v ~/nanocastle_results:/opt/nanomatizer/Nanomatizer/Results \
   -v ~/nanocastle_db:/opt/nanomatizer/userdb \
-  gmatteigmattei/nanocastle:1.1.0 \
+  ghcr.io/gianlucamattei/nanocastle:1.1.0 \
   bash Nanomatizer/Scripts/NewScripts/run_pipeline_sequential.sh -m annotate -t sniffles,gladiator
 ```
 
@@ -327,7 +327,7 @@ docker run -it --rm --user $(id -u):$(id -g) \
   -v ~/data/GCA_000001405.15_GRCh38_no_alt_analysis_set.fasta:/opt/nanomatizer/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fasta \
   -v ~/nanocastle_results:/opt/nanomatizer/Nanomatizer/Results \
   -v ~/nanocastle_db:/opt/nanomatizer/userdb \
-  gmatteigmattei/nanocastle:1.1.0 \
+  ghcr.io/gianlucamattei/nanocastle:1.1.0 \
   bash Nanomatizer/Scripts/NewScripts/run_pipeline_sequential.sh -m full -T Lung
 ```
 
@@ -352,7 +352,7 @@ docker run -it --rm --user $(id -u):$(id -g) \
   -v ~/data/my_depmap_2.csv:/opt/nanomatizer/depmap/my_depmap_2.csv \
   -v ~/nanocastle_results:/opt/nanomatizer/Nanomatizer/Results \
   -v ~/nanocastle_db:/opt/nanomatizer/userdb \
-  gmatteigmattei/nanocastle:1.1.0 \
+  ghcr.io/gianlucamattei/nanocastle:1.1.0 \
   bash Nanomatizer/Scripts/NewScripts/run_pipeline_sequential.sh -m full \
     -d /opt/nanomatizer/depmap/my_depmap_1.csv,/opt/nanomatizer/depmap/my_depmap_2.csv
 ```

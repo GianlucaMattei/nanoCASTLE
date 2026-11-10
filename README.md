@@ -46,13 +46,13 @@ NanoCASTLE (**nano**pore **C**opy-number **A**nd **ST**ructural variant **L**and
 ## Quick start
 
 ```bash
-docker pull gmatteigmattei/nanocastle:1.1.0
+docker pull ghcr.io/gianlucamattei/nanocastle:1.1.0
 
 # 1. one-time download of the databases that are not shipped with the image
 mkdir -p ~/nanocastle_db
 docker run --rm --user $(id -u):$(id -g) \
   -v ~/nanocastle_db:/opt/nanomatizer/userdb \
-  gmatteigmattei/nanocastle:1.1.0 bash Nanomatizer/download_databases.sh
+  ghcr.io/gianlucamattei/nanocastle:1.1.0 bash Nanomatizer/download_databases.sh
 
 # 2. full run (callers + annotation) on one BAM
 mkdir -p ~/nanocastle_results
@@ -63,7 +63,7 @@ docker run --rm --user $(id -u):$(id -g) -e SAMPLE=MySample \
   -v /path/to/GCA_000001405.15_GRCh38_no_alt_analysis_set.fasta.fai:/opt/nanomatizer/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fasta.fai:ro \
   -v ~/nanocastle_results:/opt/nanomatizer/Nanomatizer/Results \
   -v ~/nanocastle_db:/opt/nanomatizer/userdb \
-  gmatteigmattei/nanocastle:1.1.0 \
+  ghcr.io/gianlucamattei/nanocastle:1.1.0 \
   bash Nanomatizer/Scripts/NewScripts/run_pipeline_sequential.sh -m full
 ```
 
