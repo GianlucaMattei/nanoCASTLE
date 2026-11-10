@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================================
 # download_databases.sh — fetch the annotation databases that are NOT shipped
-# with the nanoCASTLE image (their terms of use do not allow us to
+# with the NanoCASTLE image (their terms of use do not allow us to
 # redistribute them, or we prefer you to get them from the original source).
 #
 #   REQUIRED by the annotation step (-m full / -m annotate):
@@ -30,7 +30,7 @@
 # It works on the host (needs curl, gzip, md5sum) or inside the image:
 #   docker run --rm --user $(id -u):$(id -g) \
 #     -v ~/nanocastle_db:/opt/nanomatizer/userdb \
-#     gmatteigmattei/nanocastle:1.0.0 bash Nanomatizer/download_databases.sh
+#     gmatteigmattei/nanocastle:1.1.0 bash Nanomatizer/download_databases.sh
 #
 # DepMap release: the script asks the DepMap portal for the file list and takes
 # the most recent "DepMap Public" release. The portal may answer with a human

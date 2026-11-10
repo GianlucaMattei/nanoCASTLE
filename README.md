@@ -5,7 +5,7 @@
 Structural variant (SV) and copy-number variant (CNV) calling and annotation
 for Oxford Nanopore whole-genome sequencing data aligned to GRCh38.
 
-nanoCASTLE runs four callers on one sorted BAM and merges their calls into a
+NanoCASTLE runs four callers on one sorted BAM and merges their calls into a
 single annotated table:
 
 | Step | Tool | Output |
@@ -21,7 +21,7 @@ environments and redistributable annotation databases already installed.
 
 ## Note on names
 
-nanoCASTLE (**nano**pore **C**opy-number **A**nd **ST**ructural variant **L**andscape **E**xplorer) was developed under the code name *Nanomatizer*: folders, scripts and output files inside the image still use that name (`/opt/nanomatizer`, `Nanomatizer_<SAMPLE>_aggregated.xlsx`, ...).
+NanoCASTLE (**nano**pore **C**opy-number **A**nd **ST**ructural variant **L**andscape **E**xplorer) was developed under the code name *Nanomatizer*: folders, scripts and output files inside the image still use that name (`/opt/nanomatizer`, `Nanomatizer_<SAMPLE>_aggregated.xlsx`, ...).
 
 ## Requirements
 
@@ -46,13 +46,13 @@ nanoCASTLE (**nano**pore **C**opy-number **A**nd **ST**ructural variant **L**and
 ## Quick start
 
 ```bash
-docker pull gmatteigmattei/nanocastle:1.0.0
+docker pull gmatteigmattei/nanocastle:1.1.0
 
 # 1. one-time download of the databases that are not shipped with the image
 mkdir -p ~/nanocastle_db
 docker run --rm --user $(id -u):$(id -g) \
   -v ~/nanocastle_db:/opt/nanomatizer/userdb \
-  gmatteigmattei/nanocastle:1.0.0 bash Nanomatizer/download_databases.sh
+  gmatteigmattei/nanocastle:1.1.0 bash Nanomatizer/download_databases.sh
 
 # 2. full run (callers + annotation) on one BAM
 mkdir -p ~/nanocastle_results
@@ -63,7 +63,7 @@ docker run --rm --user $(id -u):$(id -g) -e SAMPLE=MySample \
   -v /path/to/GCA_000001405.15_GRCh38_no_alt_analysis_set.fasta.fai:/opt/nanomatizer/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fasta.fai:ro \
   -v ~/nanocastle_results:/opt/nanomatizer/Nanomatizer/Results \
   -v ~/nanocastle_db:/opt/nanomatizer/userdb \
-  gmatteigmattei/nanocastle:1.0.0 \
+  gmatteigmattei/nanocastle:1.1.0 \
   bash Nanomatizer/Scripts/NewScripts/run_pipeline_sequential.sh -m full
 ```
 
@@ -96,7 +96,7 @@ downloaded resource are listed in [THIRD_PARTY.md](THIRD_PARTY.md).
 | `example/` | small example DepMap tables |
 | `docker/envspecs/` | exact package list (conda explicit specs) of the four environments in the image |
 | `THIRD_PARTY.md` | licensing of every component, third-party software and data with their terms |
-| `LICENSE` | MIT licence of the nanoCASTLE code |
+| `LICENSE` | MIT licence of the NanoCASTLE code |
 
 ## Licence
 
@@ -107,7 +107,7 @@ The Docker image also contains NanoGLADIATOR and GASOLINE, which are licensed
 for **noncommercial use only** (PolyForm Noncommercial 1.0.0; the licence
 text is in `/opt/nanomatizer/NanoGLADIATOR_1.0/LICENSE` and
 `/opt/nanomatizer/GASOLINE_2.0/LICENSE` inside the image). Commercial users
-can run nanoCASTLE without them by selecting the other callers:
+can run NanoCASTLE without them by selecting the other callers:
 
 ```bash
 ... run_pipeline_sequential.sh -m full -t sniffles,cutesv

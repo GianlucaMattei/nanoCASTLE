@@ -1,23 +1,23 @@
 # Licensing, third-party software and data
 
-## Licensing of the nanoCASTLE image
+## Licensing of the NanoCASTLE image
 
 | Component | Licence |
 |---|---|
-| nanoCASTLE pipeline and annotation code (`/opt/nanomatizer/Nanomatizer`) | MIT — `Nanomatizer/LICENSE` |
+| NanoCASTLE pipeline and annotation code (`/opt/nanomatizer/Nanomatizer`) | MIT — `Nanomatizer/LICENSE` |
 | NanoGLADIATOR 1.0 (`/opt/nanomatizer/NanoGLADIATOR_1.0`) | PolyForm Noncommercial 1.0.0 — `NanoGLADIATOR_1.0/LICENSE` |
 | GASOLINE 2.0 (`/opt/nanomatizer/GASOLINE_2.0`) | PolyForm Noncommercial 1.0.0 — `GASOLINE_2.0/LICENSE` |
 | everything else | its own licence (tables below) |
 
 NanoGLADIATOR and GASOLINE may be used for noncommercial purposes only;
 commercial use requires a separate licence from the copyright holder
-(Azienda Ospedaliero-Universitaria Meyer IRCCS). nanoCASTLE itself does not need them: for
+(Azienda Ospedaliero-Universitaria Meyer IRCCS). NanoCASTLE itself does not need them: for
 commercial use run the pipeline with the other callers only, e.g.
 `-t sniffles,cutesv`.
 
 ## Third-party software and data
 
-The nanoCASTLE image bundles third-party tools and public annotation
+The NanoCASTLE image bundles third-party tools and public annotation
 resources. Each of them remains under its own licence / terms of use; please
 cite the original authors when you use the corresponding results.
 

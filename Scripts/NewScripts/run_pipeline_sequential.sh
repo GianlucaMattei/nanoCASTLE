@@ -263,8 +263,8 @@ case "$FP" in
   "$STANDARD_FP") ASSEMBLY=hg38;;
   "$CHM13_FP")    ASSEMBLY=chm13;;
   "")             if [ -s "$OUT/.assembly" ]; then ASSEMBLY=$(cat "$OUT/.assembly")
-                  else ASSEMBLY=hg38; step "WARNING: reference not recognisable (no $REF.fai, no BAM, no $OUT/.assembly): assuming GRCh38 (results of nanoCASTLE 1.0.0)"; fi;;
-  *)              die "reference not supported (fingerprint $FP): nanoCASTLE runs on GRCh38 (no-alt) or T2T-CHM13v2.0, with chr1..chr22, chrX, chrY";;
+                  else ASSEMBLY=hg38; step "WARNING: reference not recognisable (no $REF.fai, no BAM, no $OUT/.assembly): assuming GRCh38 (results of NanoCASTLE 1.0.0)"; fi;;
+  *)              die "reference not supported (fingerprint $FP): NanoCASTLE runs on GRCh38 (no-alt) or T2T-CHM13v2.0, with chr1..chr22, chrX, chrY";;
 esac
 if [ -s "$OUT/.assembly" ] && [ "$(cat "$OUT/.assembly")" != "$ASSEMBLY" ]; then
   die "results in $OUT were produced on $(cat "$OUT/.assembly"), this run is on $ASSEMBLY: use a new output folder"
