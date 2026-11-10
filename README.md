@@ -1,4 +1,4 @@
-# nanoCASTLE
+# NanoCASTLE
 
 **nano**pore **C**opy-number **A**nd **ST**ructural variant **L**andscape **E**xplorer
 
